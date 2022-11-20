@@ -1,92 +1,105 @@
-use nalgebra::{Isometry3, RealField};
+//! Provides utilities for **static** transforms between [`CoordinateSystem`]s
+//! that do not change with time.
+
+use std::{fmt::Debug, marker::PhantomData};
+
+use nalgebra::{Isometry3, Matrix3, RealField};
 use serde::Serialize;
-use std::fmt::Debug;
 
-use super::{CoordinateSystem, IsCoordinateFrameId, Transform, SE3};
+use crate::{CoordinateSystem, IsCoordinateSystemId, ProjectiveTransform, SE3Transform};
 
+/// Static version of [`SE3Transform`] that does not change with time.
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct StaticTransform<T, DstCoordinateFrameId, SrcCoordinateFrameId>
+pub struct StaticSE3Transform<DstId, SrcId, T>
 where
+    DstId: IsCoordinateSystemId,
+    SrcId: IsCoordinateSystemId,
     T: Copy + RealField + Serialize,
-    DstCoordinateFrameId: IsCoordinateFrameId,
-    SrcCoordinateFrameId: IsCoordinateFrameId,
 {
-    pub dst: DstCoordinateFrameId,
-    pub src: SrcCoordinateFrameId,
-    pub transform: Isometry3<T>,
+    _src: PhantomData<DstId>,
+    _dst: PhantomData<SrcId>,
+    transform: Isometry3<T>,
 }
 
-impl<T, DstCoordinateFrameId, SrcCoordinateFrameId>
-    StaticTransform<T, DstCoordinateFrameId, SrcCoordinateFrameId>
+impl<DstId, SrcId, T> StaticSE3Transform<DstId, SrcId, T>
 where
     T: Copy + RealField + Serialize,
-    DstCoordinateFrameId: IsCoordinateFrameId,
-    SrcCoordinateFrameId: IsCoordinateFrameId,
+    DstId: IsCoordinateSystemId,
+    SrcId: IsCoordinateSystemId,
 {
-    pub fn new(
-        dst: DstCoordinateFrameId,
-        src: SrcCoordinateFrameId,
-        transform: Isometry3<T>,
-    ) -> Self {
+    pub fn new(transform: Isometry3<T>) -> Self {
+        // TODO: figure out some way to prevent setting identity transform
         Self {
-            dst,
-            src,
+            _src: PhantomData,
+            _dst: PhantomData,
             transform,
         }
     }
 
-    pub fn invert(self) -> StaticTransform<T, SrcCoordinateFrameId, DstCoordinateFrameId> {
-        StaticTransform::new(self.src, self.dst, self.transform.inverse())
+    pub fn transform(&self) -> Isometry3<T> {
+        self.transform
     }
 
-    pub fn to_transform_at_time(
-        self,
-        time: u64,
-    ) -> Transform<
-        Isometry3<T>,
-        DstCoordinateFrameId,
-        SE3,
-        Isometry3<T>,
-        SrcCoordinateFrameId,
-        SE3,
-        Isometry3<T>,
-    > {
-        Transform::new(
+    pub fn at_time(&self, time: u64) -> SE3Transform<DstId, SrcId, T> {
+        SE3Transform::new(
             CoordinateSystem::at_time(time),
             CoordinateSystem::at_time(time),
             self.transform,
         )
     }
-}
 
-impl<T, CoordinateFrameId> StaticTransform<T, CoordinateFrameId, CoordinateFrameId>
-where
-    T: Copy + RealField + Serialize,
-    CoordinateFrameId: IsCoordinateFrameId,
-{
-    pub fn identity() -> Self {
-        Self::new(
-            CoordinateFrameId::default(),
-            CoordinateFrameId::default(),
-            Isometry3::identity(),
-        )
+    pub fn invert(&self) -> StaticSE3Transform<SrcId, DstId, T> {
+        StaticSE3Transform::new(self.transform.inverse())
+    }
+
+    pub fn compose_with<RhsSrcId>(
+        &self,
+        rhs: StaticSE3Transform<SrcId, RhsSrcId, T>,
+    ) -> StaticSE3Transform<DstId, RhsSrcId, T>
+    where
+        RhsSrcId: IsCoordinateSystemId,
+    {
+        StaticSE3Transform::new(self.transform * rhs.transform)
     }
 }
 
-impl<T, CoordinateFrameIdA, CoordinateFrameIdB>
-    StaticTransform<T, CoordinateFrameIdA, CoordinateFrameIdB>
+/// Static version of [`ProjectiveTransform`] that does not change with time.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct StaticProjectiveTransform<DstId, SrcId, T>
+where
+    DstId: IsCoordinateSystemId,
+    SrcId: IsCoordinateSystemId,
+    T: Copy + RealField + Serialize,
+{
+    _src: PhantomData<DstId>,
+    _dst: PhantomData<SrcId>,
+    k: Matrix3<T>,
+}
+
+impl<DstId, SrcId, T> StaticProjectiveTransform<DstId, SrcId, T>
 where
     T: Copy + RealField + Serialize,
-    CoordinateFrameIdA: IsCoordinateFrameId,
-    CoordinateFrameIdB: IsCoordinateFrameId,
+    DstId: IsCoordinateSystemId,
+    SrcId: IsCoordinateSystemId,
 {
-    pub fn compose_with<CoordinateFrameIdC>(
-        self,
-        rhs: StaticTransform<T, CoordinateFrameIdB, CoordinateFrameIdC>,
-    ) -> StaticTransform<T, CoordinateFrameIdA, CoordinateFrameIdC>
-    where
-        CoordinateFrameIdC: IsCoordinateFrameId,
-    {
-        StaticTransform::new(self.dst, rhs.src, self.transform * rhs.transform)
+    pub fn new(k: Matrix3<T>) -> Self {
+        // TODO: figure out some way to prevent setting identity transform
+        Self {
+            _src: PhantomData,
+            _dst: PhantomData,
+            k,
+        }
+    }
+
+    pub fn k(&self) -> Matrix3<T> {
+        self.k
+    }
+
+    pub fn at_time(&self, time: u64) -> ProjectiveTransform<DstId, SrcId, T> {
+        ProjectiveTransform::new(
+            CoordinateSystem::at_time(time),
+            CoordinateSystem::at_time(time),
+            self.k,
+        )
     }
 }
