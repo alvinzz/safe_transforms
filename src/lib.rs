@@ -1,16 +1,16 @@
+mod coordinate_frames;
 mod coordinate_system;
 mod group;
 mod lie;
 mod manifold;
-mod posture;
 mod static_transform;
 mod transform;
 
+pub use coordinate_frames::*;
 pub use coordinate_system::*;
 pub use group::*;
 pub use lie::*;
 pub use manifold::*;
-pub use posture::*;
 pub use static_transform::*;
 pub use transform::*;
 
@@ -21,11 +21,14 @@ mod test {
 
     #[test]
     fn test() {
-        let fl0 = CoordinateFrame::<FrontLeftCameraFrame>::at_time(0);
-        let fr1 = CoordinateFrame::<FrontRightCameraFrame>::at_time(1);
+        let fl0 = CoordinateFrame::<CoordinateFrameA>::at_time(0);
+        let fr1 = CoordinateFrame::<CoordinateFrameB>::at_time(1);
         let fl0_so3 = CoordinateSystem::at_frame(fl0);
         let fr1_so3 = CoordinateSystem::at_frame(fr1);
-        let p_fl0 = ManifoldElement::new(fl0_so3, UnitQuaternion::from_scaled_axis(Vector3::new(0.1, 0.2, 0.3)));
+        let p_fl0 = ManifoldElement::new(
+            fl0_so3,
+            UnitQuaternion::from_scaled_axis(Vector3::new(0.1, 0.2, 0.3)),
+        );
         let fr1_from_fl0 = Transform::new(
             fr1_so3,
             fl0_so3,

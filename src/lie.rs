@@ -3,72 +3,97 @@ use serde::Serialize;
 use std::fmt::Debug;
 
 use super::{
-    se3, so3, CoordinateSystem, IsGroupElement, IsLieAlgebra, IsLieGroup, IsManifoldElement, IsRobotFrame, ManifoldElement,
-    SE3, SO3,
+    se3, so3, CoordinateSystem, IsCoordinateFrameId, IsGroupElement, IsLieAlgebra, IsLieGroup,
+    IsManifoldElement, ManifoldElement, SE3, SO3,
 };
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct LieAlgebraPoint<RobotFrame, LieAlgebra, Repr, GroupRepr>
+pub struct LieAlgebraPoint<CoordinateFrameId, LieAlgebra, Repr, GroupRepr>
 where
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
     LieAlgebra: IsLieAlgebra,
     Repr: Debug + Copy + Serialize,
     GroupRepr: Debug + Copy + Serialize,
-    ManifoldElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>:
-        IsGroupElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
+    ManifoldElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>:
+        IsGroupElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
 {
-    pub tangent_at: ManifoldElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
-    pub coordinate_system: CoordinateSystem<RobotFrame, LieAlgebra, Repr>,
+    pub tangent_at:
+        ManifoldElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
+    pub coordinate_system: CoordinateSystem<CoordinateFrameId, LieAlgebra, Repr>,
     pub coordinates: Repr,
 }
 
-impl<RobotFrame, LieAlgebra, Repr, GroupRepr> LieAlgebraPoint<RobotFrame, LieAlgebra, Repr, GroupRepr>
+impl<CoordinateFrameId, LieAlgebra, Repr, GroupRepr>
+    LieAlgebraPoint<CoordinateFrameId, LieAlgebra, Repr, GroupRepr>
 where
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
     LieAlgebra: IsLieAlgebra,
     Repr: Debug + Copy + Serialize,
     GroupRepr: Debug + Copy + Serialize,
-    ManifoldElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>:
-        IsGroupElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
+    ManifoldElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>:
+        IsGroupElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
 {
     fn new(
-        tangent_at: ManifoldElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
-        coordinate_system: CoordinateSystem<RobotFrame, LieAlgebra, Repr>,
+        tangent_at: ManifoldElement<
+            CoordinateFrameId,
+            <LieAlgebra as IsLieAlgebra>::Group,
+            GroupRepr,
+        >,
+        coordinate_system: CoordinateSystem<CoordinateFrameId, LieAlgebra, Repr>,
         coordinates: Repr,
     ) -> Self {
         assert!(coordinate_system.frame == tangent_at.coordinate_system().frame);
-        Self { tangent_at, coordinate_system, coordinates }
+        Self {
+            tangent_at,
+            coordinate_system,
+            coordinates,
+        }
     }
 }
 
-pub trait IsLieAlgebraPoint<T, RobotFrame, LieAlgebra, AlgebraRepr, GroupRepr>
+pub trait IsLieAlgebraPoint<T, CoordinateFrameId, LieAlgebra, AlgebraRepr, GroupRepr>
 where
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
     LieAlgebra: IsLieAlgebra,
     AlgebraRepr: Debug + Copy + Serialize,
     GroupRepr: Debug + Copy + Serialize,
-    ManifoldElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>:
-        IsGroupElement<RobotFrame, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
+    ManifoldElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>:
+        IsGroupElement<CoordinateFrameId, <LieAlgebra as IsLieAlgebra>::Group, GroupRepr>,
 {
     fn scale_by(self, scalar: T) -> Self;
 }
 
-pub trait IsLieGroupPoint<T, RobotFrame, LieGroup, GroupRepr, AlgebraRepr>:
-    IsGroupElement<RobotFrame, LieGroup, GroupRepr>
+pub trait IsLieGroupPoint<T, CoordinateFrameId, LieGroup, GroupRepr, AlgebraRepr>:
+    IsGroupElement<CoordinateFrameId, LieGroup, GroupRepr>
 where
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
     LieGroup: IsLieGroup,
     GroupRepr: Debug + Copy + Serialize,
     AlgebraRepr: Debug + Copy + Serialize,
-    ManifoldElement<RobotFrame, LieGroup, GroupRepr>: IsGroupElement<RobotFrame, LieGroup, GroupRepr>,
-    LieAlgebraPoint<RobotFrame, <LieGroup as IsLieGroup>::Algebra, AlgebraRepr, GroupRepr>:
-        IsLieAlgebraPoint<T, RobotFrame, <LieGroup as IsLieGroup>::Algebra, AlgebraRepr, GroupRepr>,
-    Self: From<LieAlgebraPoint<RobotFrame, <LieGroup as IsLieGroup>::Algebra, AlgebraRepr, GroupRepr>>,
+    ManifoldElement<CoordinateFrameId, LieGroup, GroupRepr>:
+        IsGroupElement<CoordinateFrameId, LieGroup, GroupRepr>,
+    LieAlgebraPoint<CoordinateFrameId, <LieGroup as IsLieGroup>::Algebra, AlgebraRepr, GroupRepr>:
+        IsLieAlgebraPoint<
+            T,
+            CoordinateFrameId,
+            <LieGroup as IsLieGroup>::Algebra,
+            AlgebraRepr,
+            GroupRepr,
+        >,
+    Self: From<
+        LieAlgebraPoint<
+            CoordinateFrameId,
+            <LieGroup as IsLieGroup>::Algebra,
+            AlgebraRepr,
+            GroupRepr,
+        >,
+    >,
 {
     fn log_of(
         self,
         other: Self,
-    ) -> LieAlgebraPoint<RobotFrame, <LieGroup as IsLieGroup>::Algebra, AlgebraRepr, GroupRepr> {
+    ) -> LieAlgebraPoint<CoordinateFrameId, <LieGroup as IsLieGroup>::Algebra, AlgebraRepr, GroupRepr>
+    {
         assert!(self.coordinate_system() == other.coordinate_system());
         todo!()
     }
@@ -80,24 +105,32 @@ where
     }
 }
 
-impl<T, RobotFrame> IsLieAlgebraPoint<T, RobotFrame, so3, Vector3<T>, UnitQuaternion<T>>
-    for LieAlgebraPoint<RobotFrame, so3, Vector3<T>, UnitQuaternion<T>>
+impl<T, CoordinateFrameId>
+    IsLieAlgebraPoint<T, CoordinateFrameId, so3, Vector3<T>, UnitQuaternion<T>>
+    for LieAlgebraPoint<CoordinateFrameId, so3, Vector3<T>, UnitQuaternion<T>>
 where
     T: Copy + RealField + Serialize,
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
     fn scale_by(self, scalar: T) -> Self {
-        Self::new(self.tangent_at, self.coordinate_system, self.coordinates * scalar)
+        Self::new(
+            self.tangent_at,
+            self.coordinate_system,
+            self.coordinates * scalar,
+        )
     }
 }
 
-impl<T, RobotFrame> From<LieAlgebraPoint<RobotFrame, so3, Vector3<T>, UnitQuaternion<T>>>
-    for ManifoldElement<RobotFrame, SO3, UnitQuaternion<T>>
+impl<T, CoordinateFrameId>
+    From<LieAlgebraPoint<CoordinateFrameId, so3, Vector3<T>, UnitQuaternion<T>>>
+    for ManifoldElement<CoordinateFrameId, SO3, UnitQuaternion<T>>
 where
     T: Copy + RealField + Serialize,
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
-    fn from(algebra_point: LieAlgebraPoint<RobotFrame, so3, Vector3<T>, UnitQuaternion<T>>) -> Self {
+    fn from(
+        algebra_point: LieAlgebraPoint<CoordinateFrameId, so3, Vector3<T>, UnitQuaternion<T>>,
+    ) -> Self {
         let base = algebra_point.tangent_at;
         let point = Self {
             coordinate_system: base.coordinate_system(),
@@ -107,13 +140,16 @@ where
     }
 }
 
-impl<T, RobotFrame> IsLieGroupPoint<T, RobotFrame, SO3, UnitQuaternion<T>, Vector3<T>>
-    for ManifoldElement<RobotFrame, SO3, UnitQuaternion<T>>
+impl<T, CoordinateFrameId> IsLieGroupPoint<T, CoordinateFrameId, SO3, UnitQuaternion<T>, Vector3<T>>
+    for ManifoldElement<CoordinateFrameId, SO3, UnitQuaternion<T>>
 where
     T: Copy + RealField + Serialize,
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
-    fn log_of(self, other: Self) -> LieAlgebraPoint<RobotFrame, so3, Vector3<T>, UnitQuaternion<T>> {
+    fn log_of(
+        self,
+        other: Self,
+    ) -> LieAlgebraPoint<CoordinateFrameId, so3, Vector3<T>, UnitQuaternion<T>> {
         assert!(self.coordinate_system() == other.coordinate_system());
         LieAlgebraPoint::new(
             self,
@@ -132,11 +168,11 @@ where
     pub v: Vector3<T>,
 }
 
-impl<T, RobotFrame> IsLieAlgebraPoint<T, RobotFrame, se3, Twist<T>, Isometry3<T>>
-    for LieAlgebraPoint<RobotFrame, se3, Twist<T>, Isometry3<T>>
+impl<T, CoordinateFrameId> IsLieAlgebraPoint<T, CoordinateFrameId, se3, Twist<T>, Isometry3<T>>
+    for LieAlgebraPoint<CoordinateFrameId, se3, Twist<T>, Isometry3<T>>
 where
     T: Copy + RealField + Serialize,
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
     fn scale_by(self, scalar: T) -> Self {
         Self::new(
@@ -150,13 +186,15 @@ where
     }
 }
 
-impl<RobotFrame> From<LieAlgebraPoint<RobotFrame, se3, Twist<f32>, Isometry3<f32>>>
-    for ManifoldElement<RobotFrame, SE3, Isometry3<f32>>
+impl<CoordinateFrameId> From<LieAlgebraPoint<CoordinateFrameId, se3, Twist<f32>, Isometry3<f32>>>
+    for ManifoldElement<CoordinateFrameId, SE3, Isometry3<f32>>
 where
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
     #[allow(non_snake_case)]
-    fn from(algebra_point: LieAlgebraPoint<RobotFrame, se3, Twist<f32>, Isometry3<f32>>) -> Self {
+    fn from(
+        algebra_point: LieAlgebraPoint<CoordinateFrameId, se3, Twist<f32>, Isometry3<f32>>,
+    ) -> Self {
         let base = algebra_point.tangent_at;
 
         let w = algebra_point.coordinates.w;
@@ -182,13 +220,16 @@ where
     }
 }
 
-impl<RobotFrame> IsLieGroupPoint<f32, RobotFrame, SE3, Isometry3<f32>, Twist<f32>>
-    for ManifoldElement<RobotFrame, SE3, Isometry3<f32>>
+impl<CoordinateFrameId> IsLieGroupPoint<f32, CoordinateFrameId, SE3, Isometry3<f32>, Twist<f32>>
+    for ManifoldElement<CoordinateFrameId, SE3, Isometry3<f32>>
 where
-    RobotFrame: IsRobotFrame,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
     #[allow(non_snake_case)]
-    fn log_of(self, other: Self) -> LieAlgebraPoint<RobotFrame, se3, Twist<f32>, Isometry3<f32>> {
+    fn log_of(
+        self,
+        other: Self,
+    ) -> LieAlgebraPoint<CoordinateFrameId, se3, Twist<f32>, Isometry3<f32>> {
         assert!(self.coordinate_system() == other.coordinate_system());
         let isometry = self.invert().group_mul(other).coordinates;
         let w = isometry.rotation.scaled_axis();
@@ -214,14 +255,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::types::{
-        CoordinateFrame, CoordinateSystem, FrontLeftCameraFrame, IsGroupElement, IsLieGroupPoint, ManifoldElement, SE3,
+    use crate::{
+        CoordinateFrame, CoordinateFrameA, CoordinateSystem, IsGroupElement, IsLieGroupPoint,
+        ManifoldElement, SE3,
     };
     use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector3};
 
     #[test]
     fn test_lerp() {
-        let fl0 = CoordinateFrame::<FrontLeftCameraFrame>::at_time(0);
+        let fl0 = CoordinateFrame::<CoordinateFrameA>::at_time(0);
         let fl0_so3 = CoordinateSystem::at_frame(fl0);
         let p = ManifoldElement::new(
             fl0_so3,
@@ -241,7 +283,12 @@ mod test {
         let angle_p_q = p.invert().group_mul(q).coordinates.rotation.angle();
 
         let quarter_lerp = p.lerp_to(q, 0.25);
-        let quarter_angle = p.invert().group_mul(quarter_lerp).coordinates.rotation.angle();
+        let quarter_angle = p
+            .invert()
+            .group_mul(quarter_lerp)
+            .coordinates
+            .rotation
+            .angle();
         assert!((quarter_angle - angle_p_q * 0.25).abs() < 1e-4);
 
         let half_lerp = p.lerp_to(q, 0.5);
@@ -255,14 +302,22 @@ mod test {
             .group_mul(delta_half_p)
             .group_mul(delta_quarter_p);
         assert!(q.invert().group_mul(lerp_q).coordinates.rotation.angle() < 1e-4);
-        assert!(q.invert().group_mul(lerp_q).coordinates.translation.vector.norm() < 1e-4);
+        assert!(
+            q.invert()
+                .group_mul(lerp_q)
+                .coordinates
+                .translation
+                .vector
+                .norm()
+                < 1e-4
+        );
     }
 
     #[test]
     fn test_circ() {
         let eps: f32 = 1e-6;
 
-        let fl0 = CoordinateSystem::<FrontLeftCameraFrame, SE3, Isometry3<f32>>::at_time(0);
+        let fl0 = CoordinateSystem::<CoordinateFrameA, SE3, Isometry3<f32>>::at_time(0);
 
         let p = ManifoldElement::new(
             fl0,
@@ -286,7 +341,11 @@ mod test {
         assert!((half.coordinates.translation.vector - Vector3::new(0., 1., 0.5)).norm() < eps);
         assert!(
             (half.coordinates.rotation.inverse()
-                * UnitQuaternion::from_scaled_axis(Vector3::new(0., 0., std::f32::consts::FRAC_PI_2)))
+                * UnitQuaternion::from_scaled_axis(Vector3::new(
+                    0.,
+                    0.,
+                    std::f32::consts::FRAC_PI_2
+                )))
             .angle()
                 < eps
         );

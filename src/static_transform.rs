@@ -2,38 +2,55 @@ use nalgebra::{Isometry3, RealField};
 use serde::Serialize;
 use std::fmt::Debug;
 
-use super::{CoordinateSystem, IsRobotPart, Transform, SE3};
+use super::{CoordinateSystem, IsCoordinateFrameId, Transform, SE3};
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct StaticTransform<T, DstRobotFrame, SrcRobotFrame>
+pub struct StaticTransform<T, DstCoordinateFrameId, SrcCoordinateFrameId>
 where
     T: Copy + RealField + Serialize,
-    DstRobotFrame: IsRobotPart,
-    SrcRobotFrame: IsRobotPart,
+    DstCoordinateFrameId: IsCoordinateFrameId,
+    SrcCoordinateFrameId: IsCoordinateFrameId,
 {
-    pub dst: DstRobotFrame,
-    pub src: SrcRobotFrame,
+    pub dst: DstCoordinateFrameId,
+    pub src: SrcCoordinateFrameId,
     pub transform: Isometry3<T>,
 }
 
-impl<T, DstRobotFrame, SrcRobotFrame> StaticTransform<T, DstRobotFrame, SrcRobotFrame>
+impl<T, DstCoordinateFrameId, SrcCoordinateFrameId>
+    StaticTransform<T, DstCoordinateFrameId, SrcCoordinateFrameId>
 where
     T: Copy + RealField + Serialize,
-    DstRobotFrame: IsRobotPart,
-    SrcRobotFrame: IsRobotPart,
+    DstCoordinateFrameId: IsCoordinateFrameId,
+    SrcCoordinateFrameId: IsCoordinateFrameId,
 {
-    pub fn new(dst: DstRobotFrame, src: SrcRobotFrame, transform: Isometry3<T>) -> Self {
-        Self { dst, src, transform }
+    pub fn new(
+        dst: DstCoordinateFrameId,
+        src: SrcCoordinateFrameId,
+        transform: Isometry3<T>,
+    ) -> Self {
+        Self {
+            dst,
+            src,
+            transform,
+        }
     }
 
-    pub fn invert(self) -> StaticTransform<T, SrcRobotFrame, DstRobotFrame> {
+    pub fn invert(self) -> StaticTransform<T, SrcCoordinateFrameId, DstCoordinateFrameId> {
         StaticTransform::new(self.src, self.dst, self.transform.inverse())
     }
 
     pub fn to_transform_at_time(
         self,
         time: u64,
-    ) -> Transform<Isometry3<T>, DstRobotFrame, SE3, Isometry3<T>, SrcRobotFrame, SE3, Isometry3<T>> {
+    ) -> Transform<
+        Isometry3<T>,
+        DstCoordinateFrameId,
+        SE3,
+        Isometry3<T>,
+        SrcCoordinateFrameId,
+        SE3,
+        Isometry3<T>,
+    > {
         Transform::new(
             CoordinateSystem::at_time(time),
             CoordinateSystem::at_time(time),
@@ -42,28 +59,33 @@ where
     }
 }
 
-impl<T, RobotFrame> StaticTransform<T, RobotFrame, RobotFrame>
+impl<T, CoordinateFrameId> StaticTransform<T, CoordinateFrameId, CoordinateFrameId>
 where
     T: Copy + RealField + Serialize,
-    RobotFrame: IsRobotPart,
+    CoordinateFrameId: IsCoordinateFrameId,
 {
     pub fn identity() -> Self {
-        Self::new(RobotFrame::default(), RobotFrame::default(), Isometry3::identity())
+        Self::new(
+            CoordinateFrameId::default(),
+            CoordinateFrameId::default(),
+            Isometry3::identity(),
+        )
     }
 }
 
-impl<T, RobotFrameA, RobotFrameB> StaticTransform<T, RobotFrameA, RobotFrameB>
+impl<T, CoordinateFrameIdA, CoordinateFrameIdB>
+    StaticTransform<T, CoordinateFrameIdA, CoordinateFrameIdB>
 where
     T: Copy + RealField + Serialize,
-    RobotFrameA: IsRobotPart,
-    RobotFrameB: IsRobotPart,
+    CoordinateFrameIdA: IsCoordinateFrameId,
+    CoordinateFrameIdB: IsCoordinateFrameId,
 {
-    pub fn compose_with<RobotFrameC>(
+    pub fn compose_with<CoordinateFrameIdC>(
         self,
-        rhs: StaticTransform<T, RobotFrameB, RobotFrameC>,
-    ) -> StaticTransform<T, RobotFrameA, RobotFrameC>
+        rhs: StaticTransform<T, CoordinateFrameIdB, CoordinateFrameIdC>,
+    ) -> StaticTransform<T, CoordinateFrameIdA, CoordinateFrameIdC>
     where
-        RobotFrameC: IsRobotPart,
+        CoordinateFrameIdC: IsCoordinateFrameId,
     {
         StaticTransform::new(self.dst, rhs.src, self.transform * rhs.transform)
     }
