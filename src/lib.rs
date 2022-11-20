@@ -20,12 +20,15 @@ mod test {
 
     const ATOL: f32 = 1e-6;
 
-    /// In this scenario, we have a stereo pair of cameras, which are attached
-    /// to a rig so that their relative poses are fixed.
+    /// In this scenario, we have a Stereo pair of Cameras, which are attached
+    /// to a rig so that the relative pose between the LeftCamera and the RightCamera is fixed.
     ///
-    /// We are going to track the coordinates of a point as the rig moves over time.
+    /// We are going to track the Coordinates of a [`Point`]
+    /// in the LeftCameraImage, RightCameraImage, LeftCameraSE3, and RightCameraSE3 [`CoordinateSystem`]s
+    /// as the rig moves over time.
     #[test]
     fn test_stereo() {
+        // The following are "Static" Transforms that do not change over time:
         // Set Left-Right Extrinsics.
         let se3_left_from_right =
             StaticSE3Transform::<LeftCameraSE3, RightCameraSE3, _>::new(Isometry3::from_parts(
@@ -50,17 +53,14 @@ mod test {
 
         // These are our Coordinate Systems at Time = 0.
         //
-        // Note that there are different ones for the Left and Right Cameras, as well as for 3-D Pose
-        // and for the Image Planes.
+        // Note that there are different ones for each combination of Left and Right Cameras, as well as 3-D Pose (SE3)
+        // and Image-Plane.
         let left_se3_at_0 = CoordinateSystem::<LeftCameraSE3, Isometry3<f32>>::at_time(0);
         let right_se3_at_0 = CoordinateSystem::<RightCameraSE3, Isometry3<f32>>::at_time(0);
         let left_image_at_0 = CoordinateSystem::<LeftCameraImage, Vector2<f32>>::at_time(0);
         let right_image_at_0 = CoordinateSystem::<RightCameraImage, Vector2<f32>>::at_time(0);
 
-        // Let's say that a Point is at (0, 0, POINT_DISTANCE) in the RightCameraSE3 CoordinateSystem at time 0.
-        //
-        // We are going to track its position in 3-D space relative both the Left and Right Cameras,
-        // as well as its projection into both the Left and Right Camera Images.
+        // Suppose that the Point that we want to track is at (0, 0, POINT_DISTANCE) in the RightCameraSE3 CoordinateSystem at time 0.
         let point_in_right_se3_at_0 = Point::new(
             right_se3_at_0,
             Isometry3::from_parts(
@@ -69,7 +69,7 @@ mod test {
             ),
         );
 
-        // What are the Point's coordinates in the LeftCameraSE3 CoordinateSystem at time 0?
+        // Then, what are the Point's coordinates in the LeftCameraSE3 CoordinateSystem at time 0?
         let point_in_left_se3_at_0 = se3_left_from_right
             .at_time(0)
             .transform(point_in_right_se3_at_0);
@@ -117,7 +117,7 @@ mod test {
         let _left_image_at_1 = CoordinateSystem::<LeftCameraImage, Vector2<f32>>::at_time(1);
         let _right_image_at_1 = CoordinateSystem::<RightCameraImage, Vector2<f32>>::at_time(1);
 
-        // Suppose that we've tracked the movement of the Left Camera.
+        // Let's say that we've tracked the movement of the Left Camera.
         let se3_left_1_from_left_0 = SE3Transform::new(
             left_se3_at_1,
             left_se3_at_0,
@@ -127,14 +127,14 @@ mod test {
             ),
         );
 
-        // Then, what is the movement of the Right Camera?
+        // Then, what was the movement of the Right Camera?
         let se3_right_from_left = se3_left_from_right.invert();
         let se3_right_1_from_right_0 = (se3_right_from_left.at_time(1))
             .compose_with(se3_left_1_from_left_0)
             .compose_with(se3_left_from_right.at_time(0));
 
         // What are the coordinates of the Point in the RightCameraSE3 Coordinate System?
-        // We can compute this in two ways, and confirm that the results are equivalent.
+        // We compute this in two ways, and confirm that the results are equivalent.
         let point_in_right_se3_at_1 = se3_right_1_from_right_0.transform(point_in_right_se3_at_0);
         assert!(point_in_right_se3_at_1.coordinate_system() == right_se3_at_1);
 
